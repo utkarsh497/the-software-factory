@@ -47,7 +47,7 @@ jobs:
           username: ${{ secrets.SMTP_USERNAME }}
           password: ${{ secrets.SMTP_PASSWORD }}
           subject: "🟢 New SD3 Application — ${{ steps.pr.outputs.author }}"
-          to: robin@locus.sh, manu@locus.sh
+          to: robin@locus.sh, manuy@locus.sh
           from: Locus Hiring Bot <noreply@locus.sh>
           body: |
             New application received via Pull Request.
