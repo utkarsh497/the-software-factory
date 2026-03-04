@@ -1,0 +1,82 @@
+name: Notify New Application
+
+on:
+  pull_request:
+    types: [opened]
+    paths:
+      - 'applications/**'
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get PR details
+        id: pr
+        run: |
+          echo "author=${{ github.event.pull_request.user.login }}" >> $GITHUB_OUTPUT
+          echo "url=${{ github.event.pull_request.html_url }}" >> $GITHUB_OUTPUT
+          echo "title=${{ github.event.pull_request.title }}" >> $GITHUB_OUTPUT
+          echo "profile=https://github.com/${{ github.event.pull_request.user.login }}" >> $GITHUB_OUTPUT
+
+      - name: Get application content
+        id: content
+        run: |
+          # Get the changed files in the PR
+          FILES=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            | jq -r '.[].filename' | grep '^applications/' | head -1)
+
+          if [ -n "$FILES" ]; then
+            # Get file content from PR
+            CONTENT=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+              | jq -r '.[0].patch // "No content preview available"')
+            echo "file=$FILES" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "🟢 New SD3 Application — ${{ steps.pr.outputs.author }}"
+          to: robin@locus.sh, manu@locus.sh
+          from: Locus Hiring Bot <noreply@locus.sh>
+          body: |
+            New application received via Pull Request.
+
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+            Candidate:   ${{ steps.pr.outputs.author }}
+            GitHub:      ${{ steps.pr.outputs.profile }}
+            PR:          ${{ steps.pr.outputs.url }}
+            Title:       ${{ steps.pr.outputs.title }}
+
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+            ACTION REQUIRED:
+            1. Review the PR: ${{ steps.pr.outputs.url }}
+            2. Check their GitHub: ${{ steps.pr.outputs.profile }}
+            3. Add label: "reviewing", "interview", "pass", or "hold"
+
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+            This is an automated notification from the-software-factory repo.
+
+      - name: Add label to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              labels: ['application', 'new']
+            });
