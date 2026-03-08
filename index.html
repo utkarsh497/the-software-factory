@@ -1177,10 +1177,10 @@ function captureVisitor(name, email) {
   try {
     fetch(GOOGLE_SHEET_WEBHOOK_URL, {
       method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(visitor)
-    });
+    }).then(function(r) { console.log('[factory] sheet logged:', r.status); })
+      .catch(function() { /* sheet logging failed — that's fine */ });
   } catch(e) { /* sheet logging failed — that's fine */ }
   return visitor;
 }
