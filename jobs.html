@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Locus · Open Roles — The Software Factory</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0a;
+    color: #d4d4d4;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: clamp(12px, 1.4vw, 14px);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .scanline {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 100;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.03) 0px,
+      rgba(0,0,0,0.03) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+
+  .terminal {
+    padding: clamp(8px, 2vw, 20px) clamp(10px, 3vw, 30px);
+    min-height: 100vh;
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  .title-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #111;
+    border: 1px solid #222;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+  }
+
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #ffbd2e; }
+  .dot-green { background: #28c840; }
+  .title-text { color: #444; font-size: 11px; margin-left: 12px; user-select: none; }
+
+  .terminal-body {
+    background: #0d0d0d;
+    border: 1px solid #222;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: clamp(12px, 2.5vw, 24px);
+  }
+
+  .line { white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; min-height: 1.7em; }
+  .g { color: #00D173; }
+  .w { color: #d4d4d4; }
+  .d { color: #444; }
+  .b { color: #fff; font-weight: 700; }
+
+  .back-link {
+    display: inline-block;
+    color: #00D173;
+    text-decoration: none;
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+  .back-link:hover { text-decoration: underline; }
+
+  .dept-header {
+    color: #00D173;
+    font-weight: 700;
+    font-size: clamp(13px, 1.4vw, 15px);
+    margin-top: 20px;
+    margin-bottom: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  .job-row {
+    display: flex;
+    align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px solid #111;
+    transition: background 0.15s;
+  }
+  .job-row:hover { background: #111; }
+
+  .job-title {
+    flex: 1;
+    min-width: 0;
+  }
+  .job-title a {
+    color: #d4d4d4;
+    text-decoration: none;
+  }
+  .job-title a:hover { color: #fff; text-decoration: underline; }
+
+  .job-loc {
+    color: #555;
+    font-size: clamp(11px, 1.2vw, 12px);
+    white-space: nowrap;
+    margin-left: 12px;
+  }
+
+  .job-apply {
+    margin-left: 12px;
+    white-space: nowrap;
+  }
+  .job-apply a {
+    color: #00D173;
+    text-decoration: none;
+    font-size: clamp(11px, 1.2vw, 12px);
+    border: 1px solid #00D173;
+    padding: 3px 10px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .job-apply a:hover {
+    background: #00D173;
+    color: #0a0a0a;
+  }
+
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .filter-input {
+    background: transparent;
+    border: 1px solid #333;
+    color: #d4d4d4;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    padding: 8px 12px;
+    outline: none;
+    flex: 1;
+    min-width: 200px;
+    caret-color: #00D173;
+  }
+  .filter-input:focus { border-color: #00D173; }
+  .filter-input::placeholder { color: #333; }
+
+  .filter-tag {
+    background: transparent;
+    border: 1px solid #333;
+    color: #555;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-tag:hover { border-color: #00D173; color: #00D173; }
+  .filter-tag.active { border-color: #00D173; color: #00D173; background: rgba(0,209,115,0.08); }
+
+  .summary {
+    color: #555;
+    font-size: clamp(11px, 1.2vw, 12px);
+    margin-bottom: 8px;
+  }
+
+  .cta-container { display: flex; gap: 12px; margin: 20px 0; flex-wrap: wrap; }
+
+  .cta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    border: 1px solid #00D173;
+    border-radius: 0;
+    text-decoration: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(12px, 1.3vw, 13px);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    color: #00D173;
+    background: transparent;
+    min-height: 44px;
+  }
+  .cta-btn:hover { background: #00D173; color: #0a0a0a; }
+  .cta-btn-primary { background: #00D173; color: #0a0a0a; }
+  .cta-btn-primary:hover { background: #00ff88; border-color: #00ff88; }
+
+  .no-results { color: #555; padding: 20px 0; text-align: center; }
+
+  @media (max-width: 768px) {
+    .title-text { display: none; }
+    .filter-input { font-size: 16px; }
+    .job-apply { display: none; }
+    .job-row { padding: 8px 0; }
+  }
+
+  @media (max-width: 480px) {
+    .dot { width: 8px; height: 8px; }
+    .title-bar { padding: 6px 8px; }
+    .job-loc { display: none; }
+    .filter-tag { font-size: 11px; padding: 4px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+
+<div class="terminal">
+  <div class="title-bar">
+    <div class="dot dot-red"></div>
+    <div class="dot dot-yellow"></div>
+    <div class="dot dot-green"></div>
+    <span class="title-text">factory.locus.sh — /jobs</span>
+  </div>
+  <div class="terminal-body" id="content">
+    <a href="/" class="back-link">← back to factory.locus.sh</a>
+
+    <div class="line"><span class="g">▶</span> <span class="b">OPEN ROLES AT LOCUS — THE SOFTWARE FACTORY</span></div>
+    <div class="line"><span class="d">  Writing code is intelligence. Knowing what to build next is judgement. We hire for both.</span></div>
+    <br>
+
+    <div class="filter-bar">
+      <input type="text" class="filter-input" id="searchInput" placeholder="search roles..." autocomplete="off" autofocus>
+      <button class="filter-tag" data-dept="all">All</button>
+      <button class="filter-tag" data-dept="Engineering">Eng</button>
+      <button class="filter-tag" data-dept="Product">Product</button>
+      <button class="filter-tag" data-dept="Design">Design</button>
+      <button class="filter-tag" data-dept="Marketing">Marketing</button>
+      <button class="filter-tag" data-dept="other">Other</button>
+    </div>
+
+    <div class="summary" id="summary"></div>
+    <div id="jobList"></div>
+
+    <div class="no-results" id="noResults" style="display:none;">
+      <span class="d">No matching roles found.</span><br>
+      <span class="d">Try a different search or email <a href="mailto:careers@locus.sh" style="color:#00D173;">careers@locus.sh</a></span>
+    </div>
+
+    <div class="cta-container" style="margin-top: 24px;">
+      <a href="https://github.com/locus-taxy/the-software-factory/fork" target="_blank" class="cta-btn cta-btn-primary">Fork & Apply via PR</a>
+      <a href="mailto:careers@locus.sh?subject=Application%20%7C%20%5BYour%20Name%5D" class="cta-btn">Email careers@locus.sh</a>
+    </div>
+
+    <br>
+    <div class="line"><span class="d">  How to apply via PR:</span></div>
+    <div class="line"><span class="g">  1.</span> <span class="w">Fork the repo</span></div>
+    <div class="line"><span class="g">  2.</span> <span class="w">Create</span> <span class="g">applications/your-github-username.md</span></div>
+    <div class="line"><span class="g">  3.</span> <span class="w">Include: name, role, CV/LinkedIn, one thing you built, why Locus</span></div>
+    <div class="line"><span class="g">  4.</span> <span class="w">Open a PR — we review every single one personally</span></div>
+    <br>
+    <div class="line"><span class="d">  Or there's a third way. Curious engineers tend to find it.</span></div>
+  </div>
+</div>
+
+<script>
+var jobs = [
+  { title: 'Senior Product Designer', dept: 'Design', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/uonWTrdRgTza/senior-product-designer' },
+  { title: 'DevOps Engineer - 3', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/GquK4nGtriTc/devops-engineer-3' },
+  { title: 'Director of Engineering', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/ixZHg1XsLP38/director-of-engineering' },
+  { title: 'Director of Engineering Solutions', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/CY1G9Cko9YPx/director-of-engineering-solutions' },
+  { title: 'Engineering Manager', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/EyUqQiTkzMSr/engineering-manager' },
+  { title: 'Integration Engineering Consultant', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/BBYVDWBIOSYk/integration-engineering-consultant' },
+  { title: 'Integration Lead – Middleware & Enterprise', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/6UE_GhhLY84S/integration-lead-middleware-enterprise-integrations' },
+  { title: 'Principal Engineer', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/J13CVs77APot/principal-engineer' },
+  { title: 'SDE-2 Android', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/FufccDdAtt58/sde-2-android' },
+  { title: 'SDE-2 iOS', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/9czHPpP8DjlU/sde-2-ios' },
+  { title: 'Software Developer II (Fullstack)', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/tWRGEurfrz1a/software-developer-ii-fullstack' },
+  { title: 'Software Developer III (Fullstack)', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/_refw-le759W/software-developer-iii-fullstack' },
+  { title: 'Software Development Engineer - 3', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/QBdFZljpx03q/software-development-engineer-3' },
+  { title: 'Software Development Engineer 2', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/pZZoceeKd4Ta/software-development-engineer-2' },
+  { title: 'Software Development in Test - 2', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/BMhCPIko_3gm/software-development-in-test-2' },
+  { title: 'Staff DevOps Engineer', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/LUcSZzH2whV9/staff-devops-engineer' },
+  { title: 'Staff Engineer', dept: 'Engineering', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/drDcXaKEhOp6/staff-engineer' },
+  { title: 'Finance Manager', dept: 'Finance', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/J5nAZ49DU1T_/finance-manager' },
+  { title: 'Talent Acquisition Partner', dept: 'HR', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/Ijue-l_SlW50/talent-acquisition-partner' },
+  { title: 'IT System and Security Engineer', dept: 'IT', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/ww2eEqvHgY1J/it-system-and-security-engineer' },
+  { title: 'Senior GRC Specialist', dept: 'IT', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/14v6qb7VFARB/senior-grc-specialist' },
+  { title: 'Content Lead', dept: 'Marketing', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/pcsOFFocpt2Q/content-lead' },
+  { title: 'Director of Product Marketing', dept: 'Marketing', loc: 'United States', url: 'https://locus.freshteam.com/jobs/vfiMEmxGc6r9/director-of-product-marketing' },
+  { title: 'Director of Product Management', dept: 'Product', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/N8jJD50lCdDO/director-of-product-management' },
+  { title: 'Senior Product Manager', dept: 'Product', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/ijHFz38_A-gD/senior-product-manager' },
+  { title: 'Project Manager - Business', dept: 'Project Mgmt', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/pDr0QNm-Wk8d/project-manager-business' },
+  { title: 'Technical Program Manager', dept: 'Supply Chain', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/HmiF2MkAGZI-/technical-program-manager' },
+  { title: 'Customer Success Leader - NA', dept: 'Customer Success', loc: 'United States', url: 'https://locus.freshteam.com/jobs/HqzLJacWOCSE/customer-success-leader-na' },
+  { title: 'Technical Account Manager', dept: 'Customer Success', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/UKznPl2EPPlW/technical-account-manager' },
+  { title: 'Customer Success Manager', dept: 'Customer Success', loc: 'Bengaluru', url: 'https://locus.freshteam.com/jobs/CucxSZYRScRU/customer-success-manager' },
+  { title: 'Enterprise Program Manager', dept: 'Solutions', loc: 'United States', url: 'https://locus.freshteam.com/jobs/lxwU2gLKzOH9/enterprise-program-manager-technical-operational' }
+];
+
+var searchInput = document.getElementById('searchInput');
+var jobList = document.getElementById('jobList');
+var summary = document.getElementById('summary');
+var noResults = document.getElementById('noResults');
+var filterTags = document.querySelectorAll('.filter-tag');
+var activeDept = 'all';
+
+// Core departments for filter tags; everything else goes under "Other"
+var coreDepts = ['Engineering', 'Product', 'Design', 'Marketing'];
+
+function render() {
+  var query = searchInput.value.trim().toLowerCase();
+  jobList.innerHTML = '';
+
+  var filtered = jobs.filter(function(j) {
+    var matchesSearch = !query ||
+      j.title.toLowerCase().indexOf(query) !== -1 ||
+      j.dept.toLowerCase().indexOf(query) !== -1 ||
+      j.loc.toLowerCase().indexOf(query) !== -1;
+
+    var matchesDept = activeDept === 'all' ||
+      (activeDept === 'other' ? coreDepts.indexOf(j.dept) === -1 : j.dept === activeDept);
+
+    return matchesSearch && matchesDept;
+  });
+
+  if (filtered.length === 0) {
+    noResults.style.display = 'block';
+    summary.textContent = '';
+    return;
+  }
+
+  noResults.style.display = 'none';
+  summary.textContent = filtered.length + ' role' + (filtered.length !== 1 ? 's' : '') + ' found';
+
+  // Group by department
+  var depts = {};
+  for (var i = 0; i < filtered.length; i++) {
+    var j = filtered[i];
+    if (!depts[j.dept]) depts[j.dept] = [];
+    depts[j.dept].push(j);
+  }
+
+  var deptOrder = Object.keys(depts).sort();
+  for (var d = 0; d < deptOrder.length; d++) {
+    var dept = deptOrder[d];
+    var header = document.createElement('div');
+    header.className = 'dept-header';
+    header.textContent = dept + ' (' + depts[dept].length + ')';
+    jobList.appendChild(header);
+
+    for (var k = 0; k < depts[dept].length; k++) {
+      var job = depts[dept][k];
+      var row = document.createElement('div');
+      row.className = 'job-row';
+      row.innerHTML =
+        '<div class="job-title"><a href="' + job.url + '" target="_blank">' + job.title + '</a></div>' +
+        '<div class="job-loc">' + job.loc + '</div>' +
+        '<div class="job-apply"><a href="' + job.url + '" target="_blank">Apply →</a></div>';
+      jobList.appendChild(row);
+    }
+  }
+}
+
+// Filter tags
+for (var t = 0; t < filterTags.length; t++) {
+  filterTags[t].addEventListener('click', function() {
+    activeDept = this.getAttribute('data-dept');
+    for (var i = 0; i < filterTags.length; i++) filterTags[i].classList.remove('active');
+    this.classList.add('active');
+    render();
+  });
+}
+
+// Search
+searchInput.addEventListener('input', render);
+
+// Initial render
+document.querySelector('[data-dept="all"]').classList.add('active');
+render();
+</script>
+</body>
+</html>
